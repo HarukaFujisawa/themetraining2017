@@ -94,8 +94,8 @@ Transform:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1127737199187002}
-  m_LocalRotation: {x: -0.33272976, y: 0.6914169, z: 0.6239318, w: -0.14813054}
-  m_LocalPosition: {x: -0.7642291, y: -0.053920448, z: -0.19893014}
+  m_LocalRotation: {x: -0.6634215, y: 0.28428823, z: 0.24468744, w: 0.6474413}
+  m_LocalPosition: {x: 0.6419029, y: -0.05392033, z: -0.618826}
   m_LocalScale: {x: 0.05, y: 0.05, z: 0.05}
   m_Children:
   - {fileID: 224133284894923520}
@@ -226,7 +226,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3296f89c5c5a85419c2b4d3ef52020f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _token: xoxp-166685232898-166618038259-191709012435-7cd7c51730849bce2a439164c35ca1e8
+  _token: 0000
   _channel: C4WNTPLQM
   _latest: 
   _oldest: 
@@ -289,7 +289,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sendText: "Unity\u304B\u3089\u9001\u4FE1..."
-  _token: xoxp-166685232898-166618038259-191709012435-7cd7c51730849bce2a439164c35ca1e8
+  _token: 0000
   _channel: '@haruka'
 --- !u!114 &114722730956551582
 MonoBehaviour:

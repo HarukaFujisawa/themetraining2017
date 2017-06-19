@@ -8,7 +8,7 @@ using Slack;
 public class SendMessageToSlack : MonoBehaviour {
 
     public string sendText = "Unityから送信...";
-    public string _token = "xoxp-166685232898-166618038259-191709012435-7cd7c51730849bce2a439164c35ca1e8";
+    public string _token = "0000";
     public string _channel = "D4WNU3BK7"; //"@haruka";
 
 
