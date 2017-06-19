@@ -185,13 +185,11 @@ namespace Slack
             rtmConnect connect = JsonUtility.FromJson<rtmConnect>(result);
             yield return connect;
 
-            //TODO: resultがあるときのエラー処理//
-            //if(connect.ok.Equals("false"))
-            //{
-            //    onError("ok:" + connect.ok + ", \nresult:" + result);
-            //}
-
-            if (onSuccess != null)
+            if (connect.ok.Equals("false"))
+            {
+                onError("getWebSocketURL error --- result:" + result);
+            }
+            else if (onSuccess != null)
             {
                 onSuccess(connect);
             }
