@@ -188,7 +188,7 @@ public class PlaySpaceManager : Singleton<PlaySpaceManager>
     /// <summary>
     /// Called when the GameObject is unloaded.
     /// </summary>
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
         if (SurfaceMeshesToPlanes.Instance != null)
         {

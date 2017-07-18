@@ -15,7 +15,7 @@ public class WebSocketConnectionViaSlack : MonoBehaviour
 {
     static public WebSocketConnectionViaSlack instance;
 
-    public string token; //自分のトークンにする
+    public string token = "0000";
     private string wsURL;
 
 #if WINDOWS_UWP

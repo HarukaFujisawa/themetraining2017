@@ -19,10 +19,6 @@ public class setMessage : MonoBehaviour {
     // Update is called once per frame
     void Update() {
 
-        //常にこっち向いてくる
-        transform.LookAt(Camera.main.transform);
-        transform.Rotate(new Vector3(-90, 90, 0));
-
         if (WebSocketConnectionViaSlack.instance.latestMessageDict.ContainsKey(userID))
         {
             wsGetMessageData data = WebSocketConnectionViaSlack.instance.latestMessageDict[userID];
