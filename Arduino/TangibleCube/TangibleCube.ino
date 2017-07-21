@@ -93,7 +93,7 @@ void loop()
   }
   //*******Push Recognizer***********//
 
-  Serial.println(mPushRecog.getPress());
+  //Serial.println(mPushRecog.getDefaultPress());
   
   static long s_latestUpdate = 0;
   long curr = millis();

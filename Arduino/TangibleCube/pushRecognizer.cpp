@@ -2,7 +2,7 @@
 
 
 pushRecognizer::pushRecognizer()
-  :mState(0), cof(0.99), mDefaultVal(1013.25), mThreshVal(0.5), mPrevVal(1013.25), mMaxVal(1013.25), t1(0.0), t2(0.0)
+  :mState(0), cof(0.99), mDefaultVal(1013.25), mInitialDefaultVal(1013.25), mThreshVal(0.5), mMaxVal(1013.25), t1(0.0), t2(0.0), counter(0)
 {
     temp_act = 0.0;
     hum_act=0.0;
@@ -51,6 +51,16 @@ void pushRecognizer::updateData()
     temp_act = (double)temp_cal / 100.0;
     press_act = (double)press_cal / 100.0;
     hum_act = (double)hum_cal / 1024.0;  
+}
+
+void pushRecognizer::reset()
+{
+  mState = 0;
+  mMaxVal = 0.0;
+  t1 = 0.0;
+  t2 = 0.0;
+  mDefaultVal = mInitialDefaultVal;
+  counter = 0;
 }
 
 void pushRecognizer::readTrim()
@@ -182,7 +192,7 @@ unsigned long int pushRecognizer::calibration_H(signed long int adc_H)
    return (unsigned long int)(v_x1 >> 12);   
 }
 
-//Push pushRecognizer::input(float pressure, unsigned long timestamp)
+
 Push pushRecognizer::input(unsigned long timestamp)
 {
   updateData();
@@ -194,49 +204,60 @@ Push pushRecognizer::input(unsigned long timestamp)
     case 0:
       if((press_act - mDefaultVal) > mThreshVal)
       {
+
         mState = 1;
         t1 = timestamp;
         mMaxVal = 0.0;
 
-      Push push1;
-      push1.result = 1;
-      push1.time = 0.0;
-      push1.MaxDiff = 0.0;
-      push = push1;
-        
+        Push push1;
+        push1.result = 1;
+        push1.time = 0.0;
+        push1.MaxDiff = 0.0;
+        push = push1;
+      
       }
       else
       {
-        //定常値を測定
-        mDefaultVal = mDefaultVal * cof + press_act * (1.0 - cof);
+        if(counter <= 1000)
+        {
+          //定常値を測定
+          mDefaultVal = mDefaultVal * cof + press_act * (1.0 - cof);
+          mInitialDefaultVal = mDefaultVal;
+          counter++;
+        }
+        
       }
       break;
 
-    case 1:
+    case 1:    
       if((press_act - mDefaultVal) < mThreshVal)
       {
         mState = 2;
         t2 = timestamp;
       }
       else
-      {
+      {          
         //max値を探索
         if(press_act > mMaxVal)
         {
           mMaxVal = press_act;
         }
-        
-        //mState = 0;
+
+        if((timestamp - t1) >= 5000) //Highのあとデフォルトの気圧がおかしくなるので、修正
+        {
+          reset();
+        }
       }
       break;
 
     case 2:
-      mState = 0;
-      
+      mState = 0;  
+
       Push push2;
       push2.result = 2;
       push2.time = t2 - t1;
       push2.MaxDiff = mMaxVal - mDefaultVal;
+          
       push = push2;
          
       break;
@@ -244,9 +265,6 @@ Push pushRecognizer::input(unsigned long timestamp)
     default:
       break;      
   }
-
-  mPrevVal = press_act; //1frame前の気圧を保存
-
 
   return push;
 }

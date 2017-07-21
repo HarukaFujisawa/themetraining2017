@@ -46,14 +46,14 @@ public class RemoteMotionSensor : PeripheralDevice
     {
         if (Input.GetKeyUp(KeyCode.P))
         {
-            q_i = Quaternion.Inverse(transform.rotation);
+            q_i *= Quaternion.Inverse(transform.rotation);
         }
 
     }
 
     public void onClickInitButton()
     {
-        q_i = Quaternion.Inverse(transform.rotation);
+        q_i *= Quaternion.Inverse(transform.rotation);
     }
 
 
@@ -106,6 +106,7 @@ public class RemoteMotionSensor : PeripheralDevice
                         if (v.magnitude < acc_thresh)
                         {
                             transform.position += transform.forward * footStep;
+                            transform.localPosition = new Vector3(transform.localPosition.x, 0.063f, transform.localPosition.z); //高さはplaygroundの高さに固定
                             //DuckObj.transform.localPosition += DuckObj.transform.forward * footStep;
                         }
 
@@ -126,16 +127,14 @@ public class RemoteMotionSensor : PeripheralDevice
                         case 1:
                             break;
                         case 2:
-                            //Animatorをactive にする
-                            //jumpAnimator.enabled = true;
 
-                            if (push.time >= 0f && push.time <= jumpTime1 && push.MaxDiff >= 0f && push.MaxDiff <= jumpPress1)
+                            if ((push.time >= 0f && push.time <= jumpTime1) || (push.MaxDiff >= 0f && push.MaxDiff <= jumpPress1))
                             {
                                 Debug.Log("Low");
                                 jumpAnimator.SetTrigger("lowTrigger");
                                 //jumpAnimator.Play("Jump_low");
                             }
-                            else if (push.time >= jumpTime1 && push.time <= jumpTime2 && push.MaxDiff >= jumpPress1 && push.MaxDiff <= jumpPress2)
+                            else if ((push.time >= jumpTime1 && push.time <= jumpTime2) || (push.MaxDiff >= jumpPress1 && push.MaxDiff <= jumpPress2))
                             {
                                 Debug.Log("Mid");
                                 jumpAnimator.Play("Jump_mid");
@@ -145,10 +144,8 @@ public class RemoteMotionSensor : PeripheralDevice
                                 Debug.Log("High");
                                 jumpAnimator.Play("Jump_high");
                             }
-
-                            //jumpAnimator.enabled = false;
-
                             break;
+
                         default:
                             break;
                     }

@@ -24,6 +24,9 @@ class pushRecognizer
     double getTemp() { return temp_act; };
     double getHum() { return hum_act; };
     double getPress() { return press_act; };
+    double getDefaultPress() { return mDefaultVal; };
+
+    void reset();
     
     void readTrim();
     void writeReg(uint8_t reg_address, uint8_t data);
@@ -40,13 +43,16 @@ class pushRecognizer
     int mState;
     float cof;
     float mDefaultVal;
+    float mInitialDefaultVal;
     float mThreshVal;
 
-    float mPrevVal;
     float mMaxVal;
 
     float t1;
     float t2;
+    
+    //mDefaultValを測るためのカウンタ
+    int counter;
 
     //センサの値
     double temp_act;
