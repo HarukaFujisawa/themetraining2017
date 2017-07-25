@@ -47,8 +47,8 @@ void setup()
     // Registering device ability.
     s_remote.getAbility().push_back("gyroscope");
     s_remote.getAbility().push_back("accelerometer");
-    s_remote.getAbility().push_back("motion");
-    s_remote.getAbility().push_back("push");
+    s_remote.getAbility().push_back("motion2");
+    s_remote.getAbility().push_back("push2");
 
     Serial.print("Start Listing UDP port : ");
     Serial.println(s_localPort);
@@ -104,18 +104,45 @@ void loop()
 
   static int s_checkCount = 0;
   s_checkCount++;
-  if((s_checkCount % 2) == 0) { // == 0だお
+  if((s_checkCount % 3) == 0) { // == 0だお
     s_remote.update();
-    if((s_checkCount % 10) == 0) { // == 0だお
-      s_dns.update();      
-    }
-  } else {
+    s_dns.update();  
+
     s_posture.update();
-    sendUDP_motion(data);
+    sendUDP_motion(data);        
+  } else {
   }
+
   
-#if false
-    Serial.print("(");
+//  if((s_checkCount % 2) == 0) { // == 0だお
+//    s_remote.update();
+//    if((s_checkCount % 10) == 0) { // == 0だお
+//      s_dns.update();      
+//    }
+//  } else {
+//    s_posture.update();
+//    sendUDP_motion(data);
+//  }
+  
+#if true
+
+    Serial.print("acc(");
+    Serial.print(String(data.ax, 3));
+    Serial.print(", ");
+    Serial.print(String(data.ay, 3));
+    Serial.print(", ");
+    Serial.print(String(data.az, 3));
+    Serial.print(") ");
+
+    Serial.print("gyro(");
+    Serial.print(String(data.gx, 3));
+    Serial.print(", ");
+    Serial.print(String(data.gy, 3));
+    Serial.print(", ");
+    Serial.print(String(data.gz, 3));
+    Serial.print(") ");
+
+    Serial.print("rot(");
     Serial.print(String(s_posture.quat.i.x, 3));
     Serial.print(", ");
     Serial.print(String(s_posture.quat.i.y, 3));

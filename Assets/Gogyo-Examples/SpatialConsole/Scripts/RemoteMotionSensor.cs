@@ -7,6 +7,13 @@ public class RemoteMotionSensor : PeripheralDevice
 {
 
     public Animator jumpAnimator;
+    public AudioSource audioSource;
+
+    public float parentWidth;
+    public float parentHeight;
+    public float duckscale;
+
+    public string[] ability;
 
     public float acc_thresh;
     public float footStep;
@@ -23,35 +30,52 @@ public class RemoteMotionSensor : PeripheralDevice
 
     private Quaternion q_i;
 
-   // StreamWriter sw;
+    public string filename;
+#if UNITY_EDITOR
+    StreamWriter sw;
+#endif
 
     protected override void Start()
     {
-        Ability.Add("motion");
-        Ability.Add("push");
+        for (int i = 0; i < ability.Length; i++)
+        {
+            Ability.Add(ability[i]);
+        }
+        //Ability.Add("motion");
+        //Ability.Add("push");
         base.Start();
         static_acc = new Vector3(-1, -1f, -1f);
 
         q_i = new Quaternion(0f, 0f, 0f, 1f);
 
         jumpAnimator = transform.GetChild(0).GetComponent<Animator>();
-        //jumpAnimator.enabled = false;
+        audioSource = gameObject.GetComponent<AudioSource>();
 
-        //sw = new StreamWriter("./AccData.csv", false);
-        //sw.WriteLine("x,y,z,m");
+        parentWidth = transform.parent.GetComponent<Vuforia.ImageTargetBehaviour>().GetSize().x;
+        parentHeight = transform.parent.GetComponent<Vuforia.ImageTargetBehaviour>().GetSize().y;
+        duckscale = transform.localScale.x;
+
 
     }
 
     private void Update()
     {
-        if (Input.GetKeyUp(KeyCode.P))
+        if (Input.GetKeyUp(KeyCode.B))
         {
-            q_i *= Quaternion.Inverse(transform.rotation);
-        }
+#if UNITY_EDITOR
 
+            if (sw != null)
+            {
+                sw.Flush();
+                sw.Close();
+            }
+            sw = new StreamWriter("./" + filename, false);
+            sw.WriteLine("ax,ay,az,rx,ry,rz,rw,gx,gy,gz");
+#endif
+        }
     }
 
-    public void onClickInitButton()
+    public void SetQi()
     {
         q_i *= Quaternion.Inverse(transform.rotation);
     }
@@ -73,9 +97,12 @@ public class RemoteMotionSensor : PeripheralDevice
                     //v.Normalize();
 
                     //Debug.Log(v.magnitude.ToString("F4"));
-
-                    //sw.WriteLine(v.x + "," + v.y + "," + v.z + "," + v.magnitude);
-
+#if UNITY_EDITOR
+                    if (sw != null)
+                    {
+                        sw.WriteLine(motion.acc.x + "," + motion.acc.y + "," + motion.acc.z + "," + motion.rot.x + "," + motion.rot.y + "," + motion.rot.z + "," + motion.rot.w + "," + motion.gyro.x + "," + motion.gyro.y + "," + motion.gyro.z);
+                    }
+#endif
                     // 右手系 → 左手系変換して代入
                     //transform.rotation = new Quaternion(-sensor.rot.x, sensor.rot.y, sensor.rot.z, -sensor.rot.w);
                     //        transform.rotation = new Quaternion(-sensor.rot.x, sensor.rot.y, -sensor.rot.z, sensor.rot.w);
@@ -105,9 +132,34 @@ public class RemoteMotionSensor : PeripheralDevice
                         //vを正規化しないで、nolmの1G(静止状態の重力分)からの差が閾値だったら、にする
                         if (v.magnitude < acc_thresh)
                         {
-                            transform.position += transform.forward * footStep;
-                            transform.localPosition = new Vector3(transform.localPosition.x, 0.063f, transform.localPosition.z); //高さはplaygroundの高さに固定
-                            //DuckObj.transform.localPosition += DuckObj.transform.forward * footStep;
+                            if (-parentWidth / 2 < transform.localPosition.x / duckscale && transform.localPosition.x / duckscale < parentWidth / 2
+                             && -parentHeight / 2 < transform.localPosition.z / duckscale && transform.localPosition.z / duckscale < parentHeight / 2) //playgorund外に出ないように
+                            {
+                                transform.position += transform.forward * footStep;
+                                transform.localPosition = new Vector3(transform.localPosition.x, 0.063f, transform.localPosition.z); //高さはplaygroundの高さに固定
+                            }
+                            else
+                            {
+
+                                if (-parentHeight / 2 > transform.localPosition.z / duckscale)
+                                {
+                                    transform.localPosition = new Vector3(transform.localPosition.x, transform.localPosition.y, -parentHeight / 2 * duckscale) + new Vector3(0f, 0f, 0.001f * duckscale);
+                                }
+                                else if (transform.localPosition.z / duckscale > parentHeight / 2)
+                                {
+                                    transform.localPosition = new Vector3(transform.localPosition.x, transform.localPosition.y, parentHeight / 2 * duckscale) - new Vector3(0f, 0f, 0.001f * duckscale);
+                                }
+
+                                if (-parentWidth / 2 > transform.localPosition.x / duckscale)
+                                {
+                                    transform.localPosition = new Vector3(-parentWidth / 2 * duckscale, transform.localPosition.y, transform.localPosition.z) + new Vector3(0.001f * duckscale, 0f, 0f);
+                                }
+                                else if (transform.localPosition.x / duckscale > parentWidth / 2)
+                                {
+                                    transform.localPosition = new Vector3(parentWidth / 2 * duckscale, transform.localPosition.y, transform.localPosition.z) - new Vector3(0.001f * duckscale, 0f, 0f); ;
+                                }
+
+                            }
                         }
 
                     }
@@ -127,6 +179,8 @@ public class RemoteMotionSensor : PeripheralDevice
                         case 1:
                             break;
                         case 2:
+
+                            audioSource.Play();
 
                             if ((push.time >= 0f && push.time <= jumpTime1) || (push.MaxDiff >= 0f && push.MaxDiff <= jumpPress1))
                             {
@@ -161,11 +215,13 @@ public class RemoteMotionSensor : PeripheralDevice
 
     private void OnDestroy()
     {
-        //if (sw != null)
-        //{
-        //    sw.Flush();
-        //    sw.Close();
-        //}
+#if UNITY_EDITOR
+        if (sw != null)
+        {
+            sw.Flush();
+            sw.Close();
+        }
+#endif
     }
 
     [System.Serializable]
