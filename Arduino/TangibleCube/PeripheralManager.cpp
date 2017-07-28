@@ -58,21 +58,23 @@ void PeripheralManager::update()
   static unsigned long s_alivePingTime = 0;
   unsigned long t = millis();
 
-  // UDP蜿嶺ｿ｡繝舌ャ繝輔ぃ繧偵メ繧ｧ繝�繧ｯ.
+  // UDP受信バッファをチェック.
   checkReceive();
 
-  // 髱槭い繧ｯ繝�繧｣繝悶ョ繝舌う繧ｹ縺ｮ繝√ぉ繝�繧ｯ.
+  // 非アクティブデバイスのチェック.
   if(abs(t - s_checkTime) > 1000) {
     s_checkTime = t;
     checkInactiveDevice();
   }
 
-  // alive騾∝�ｺ
+  // alive送出
   if(abs(t - s_alivePingTime) > 5000) {
     s_alivePingTime = t;
     sendAlive();
   }
 }
+
+const static int LED_PIN = 13; //5
 
 void PeripheralManager::checkReceive()
 {
@@ -81,13 +83,14 @@ void PeripheralManager::checkReceive()
     char buffer[256];
 
     int readSize = m_udp.read(buffer, (dataReady < 255 ? dataReady : 255));
-    if(readSize > 0) {  // 譁�蟄怜�励�ｮ邨らｫｯ繧定ｨｭ螳�
+    if(readSize > 0) {  // 文字列の終端を設定
       buffer[readSize] = '\0';
     }
 
     IPAddress remoteIP = m_udp.remoteIP();
     int remotePort = m_udp.remotePort();
 
+    Serial.println("*******");
     Serial.print("Recieve from ");
     Serial.print(remoteIP);
     Serial.print(" : ");
@@ -99,7 +102,7 @@ void PeripheralManager::checkReceive()
       if(root.containsKey("pcmd")) {
         const char *pcmd = (const char *)root["pcmd"];
         if(0 == strcmp(pcmd, "search")) {
-          sendAvailable(remoteIP, remotePort);  // 閭ｽ蜉帙ｒ騾夐＃.
+          sendAvailable(remoteIP, remotePort);  // 能力を通達.
         //} else if(0 == strcmp(pcmd, "available")) {
         } else if(0 == strcmp(pcmd, "request")) {
           PeripheralDevice device;
@@ -109,19 +112,28 @@ void PeripheralManager::checkReceive()
 
           PeripheralDevice *pDevice = getDevice(remoteIP, remotePort);
           if(NULL == pDevice) {
-            m_devices.push_back(device);  // 繝�繝舌う繧ｹ繧堤匳骭ｲ.
+            m_devices.push_back(device);  // デバイスを登録.
           } else {
             *pDevice = device;
           }
         } else if(0 == strcmp(pcmd, "alive")) {
           PeripheralDevice *pDevice = getDevice(remoteIP, remotePort);
           if(NULL != pDevice) {
-            pDevice->latestAlive = millis();  // 譎ょ綾繧呈峩譁ｰ.
+            pDevice->latestAlive = millis();  // 時刻を更新.
           }
         } else if(0 == strcmp(pcmd, "bye")) {
         }
       }
-    }    
+      else if(root.containsKey("event")){//イベントをキャッチ  
+        const char *event = (const char *)root["event"];
+        if(0 == strcmp(event, "conflictEnter")) {        
+          //Lチカ
+          digitalWrite(LED_PIN, HIGH);          
+        }else if(0 == strcmp(event, "conflictExit")) {      
+          digitalWrite(LED_PIN, LOW);          
+        }
+      }
+    }
   }
 }
 

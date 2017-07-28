@@ -73,6 +73,12 @@ public class RemoteMotionSensor : PeripheralDevice
             sw.WriteLine("ax,ay,az,rx,ry,rz,rw,gx,gy,gz");
 #endif
         }
+
+        if (Input.GetKeyUp(KeyCode.L))
+        {
+            base.Send("Key Pressed!! to " + base.Target.Address); //これでこの相手のPeripheralDeviceにデータが送れる
+        }
+
     }
 
     public void SetQi()

@@ -11,6 +11,7 @@ public class Initialize : MonoBehaviour {
     public GameObject Duck2;
 
     public GameObject playground;
+    MeshRenderer playgroundMesh;
 
 
     void Awake()
@@ -29,6 +30,11 @@ public class Initialize : MonoBehaviour {
 
     }
 
+    void Start()
+    {
+        playgroundMesh = playground.GetComponent<MeshRenderer>();
+    }
+
 
     private void Update()
     {
@@ -39,6 +45,7 @@ public class Initialize : MonoBehaviour {
 
         if(Input.GetKeyUp(KeyCode.O))
         {
+            playgroundMesh.enabled = !playgroundMesh.enabled;
             Vuforia.VuforiaBehaviour.Instance.enabled = !Vuforia.VuforiaBehaviour.Instance.enabled;
         }
     }

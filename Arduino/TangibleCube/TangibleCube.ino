@@ -18,14 +18,14 @@ static nzGyroPosture s_posture;
 static PeripheralManager s_remote;
 
 const static float GRAVITY = (9.80665f);
-const static int LED_PIN = 5;
+const static int LED_PIN = 13; //5
 //const static int TOUCH_CHARGE_PIN = 12;
 //const static int TOUCH_SENSOR_PIN = 13;
 
 static bool checkRecvUDP();
 static void sendUDP_motion(MotionSensorDataf &data);
 static void sendUDP_push(Push &p_data);
-static bool blinkLED(int sw = -1); // sw= -1:blink, 0:off, 1:on
+//static bool blinkLED(int sw = -1); // sw= -1:blink, 0:off, 1:on
 
 static pushRecognizer mPushRecog;
 
@@ -47,8 +47,8 @@ void setup()
     // Registering device ability.
     s_remote.getAbility().push_back("gyroscope");
     s_remote.getAbility().push_back("accelerometer");
-    s_remote.getAbility().push_back("motion2");
-    s_remote.getAbility().push_back("push2");
+    s_remote.getAbility().push_back("motion1"); //ぱぺぞうの番号によってここの数字を変える
+    s_remote.getAbility().push_back("push1");   //ぱぺぞうの番号によってここの数字を変える
 
     Serial.print("Start Listing UDP port : ");
     Serial.println(s_localPort);
@@ -98,7 +98,7 @@ void loop()
   static long s_latestUpdate = 0;
   long curr = millis();
   if(curr - s_latestUpdate < 16) {
-    return; // 繧ｿ繧､繝医Ν繝ｼ繝励％縺薙∪縺ｧ
+    return; // タイトループここまで
   }
   s_latestUpdate = curr;
 
@@ -124,7 +124,7 @@ void loop()
 //    sendUDP_motion(data);
 //  }
   
-#if true
+#if false
 
     Serial.print("acc(");
     Serial.print(String(data.ax, 3));
@@ -211,18 +211,18 @@ static void sendUDP_push(Push &p_data)
 }
 
 
-static bool blinkLED(int sw)
-{
-  static bool s_on = false;
-  if(sw < 0) {
-    s_on = !s_on;
-  } else if(sw == 0) {
-    s_on = false;
-  } else {
-    s_on = true;
-  }
-  digitalWrite(LED_PIN, s_on ? HIGH : LOW);
-}
+//static bool blinkLED(int sw)
+//{
+//  static bool s_on = false;
+//  if(sw < 0) {
+//    s_on = !s_on;
+//  } else if(sw == 0) {
+//    s_on = false;
+//  } else {
+//    s_on = true;
+//  }
+//  digitalWrite(LED_PIN, s_on ? HIGH : LOW);
+//}
 
 
 

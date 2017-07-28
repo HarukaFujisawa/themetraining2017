@@ -64,6 +64,7 @@ namespace Gogyo.Network
                 if (null != text)
                 {
                     text.text = data + " from " + address + ":" + port;
+                    //Debug.Log(data + " from " + address + ":" + port);
                 }
 
                 PeripheralConnectedDevice device = FindByAddress(address, port);

@@ -35,7 +35,7 @@ void gyro3Axis();
 void acc3Axis();
 
 
-// 繝｢繝ｼ繧ｷ繝ｧ繝ｳ繧ｻ繝ｳ繧ｵ縺ｮ蛟､
+// モーションセンサの値
 MotionSensorData s_data;
 static nzGyroPosture s_posture;
 
@@ -53,14 +53,14 @@ void initITGMPU()
 
 void updateITGMPU()
 {
-  //noInterrupts();  // 蜑ｲ繧願ｾｼ縺ｿ遖∵ｭ｢蛹ｺ髢�
+  //noInterrupts();  // 割り込み禁止区間
   // 譎る俣繧定ｨ域ｸｬ
   unsigned long startTime, endTime, procTime;
   startTime = micros();
   gyro3Axis();
   acc3Axis();
   
-  //interrupts();  // 蜑ｲ繧願ｾｼ縺ｿ險ｱ蜿ｯ
+  //interrupts();  // 割り込み許可
   printMotionValues();
   endTime = micros();
   procTime = endTime - startTime;
