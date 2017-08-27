@@ -1,7 +1,6 @@
 
 #include <Arduino.h>
 #include "PeripheralManager.h"
-#include <ArduinoJson.h>
 
 PeripheralManager::PeripheralManager()
 {
@@ -9,10 +8,15 @@ PeripheralManager::PeripheralManager()
 
 PeripheralManager::~PeripheralManager()
 {
+  led.offLED();
 }
 
 bool PeripheralManager::init(int port)
 {
+  isCreatedMyAbilityBuff = false;
+  led.init();
+  //led.onLED();//(150, 150, 150);
+    
   bool err = false;
   err = m_udp.begin(port);
   return err;
@@ -74,8 +78,6 @@ void PeripheralManager::update()
   }
 }
 
-const static int LED_PIN = 13; //5
-
 void PeripheralManager::checkReceive()
 {
   int dataReady = m_udp.parsePacket();
@@ -102,7 +104,7 @@ void PeripheralManager::checkReceive()
       if(root.containsKey("pcmd")) {
         const char *pcmd = (const char *)root["pcmd"];
         if(0 == strcmp(pcmd, "search")) {
-          sendAvailable(remoteIP, remotePort);  // 能力を通達.
+          sendAvailable(remoteIP, remotePort);  // 能力を通達. //※
         //} else if(0 == strcmp(pcmd, "available")) {
         } else if(0 == strcmp(pcmd, "request")) {
           PeripheralDevice device;
@@ -124,15 +126,22 @@ void PeripheralManager::checkReceive()
         } else if(0 == strcmp(pcmd, "bye")) {
         }
       }
-      else if(root.containsKey("event")){//イベントをキャッチ  
+      else if(root.containsKey("event")){ //イベントをキャッチ  
         const char *event = (const char *)root["event"];
-        if(0 == strcmp(event, "conflictEnter")) {        
+        Serial.println(event);        
+        if(containsNestedKey(root, "onLED")) {        
           //Lチカ
-          digitalWrite(LED_PIN, HIGH);          
-        }else if(0 == strcmp(event, "conflictExit")) {      
-          digitalWrite(LED_PIN, LOW);          
+          Serial.println("LED ON");
+          led.onLED(root["event"]["onLED"][0], root["event"]["onLED"][1], root["event"]["onLED"][2]);   
+        }else if(0 == strcmp(event, "offLED")) {  
+          Serial.println("LED OFF"); 
+          led.offLED();
         }
       }
+    }
+    else
+    {
+      Serial.println("???????????????");
     }
   }
 }
@@ -153,22 +162,56 @@ void PeripheralManager::checkInactiveDevice()
   }
 }
 
-void PeripheralManager::sendAvailable(IPAddress address, int port)
+void PeripheralManager::createAbilityBuffer()
 {
   StaticJsonBuffer<255> jsonBuffer;
   JsonObject &root = jsonBuffer.createObject();
   root["pcmd"] = "available";
   JsonArray &array = root.createNestedArray("ability");
+
+  //if(!array.success()) return;
+  
   for(std::list<std::string>::iterator itr = m_ability.begin(); itr != m_ability.end(); itr++) {
-    array.add((const char *)itr->c_str());
+    Serial.println("start");
+    Serial.println((const char *)itr->c_str()); //※
+    //array.add((const char *)itr->c_str()); 
+    Serial.println(array.add((const char *)itr->c_str()));
+    Serial.println("done");
+  }
+
+  root.printTo(myAbilityBuff, 255);
+
+  Serial.print("create available buffer: ");
+  Serial.println(myAbilityBuff);
+  isCreatedMyAbilityBuff = true;
+}
+
+void PeripheralManager::sendAvailable(IPAddress address, int port)
+{
+  /*
+  StaticJsonBuffer<255> jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  root["pcmd"] = "available";
+  JsonArray &array = root.createNestedArray("ability");
+
+  if(!array.success()) return;
+  
+  for(std::list<std::string>::iterator itr = m_ability.begin(); itr != m_ability.end(); itr++) {
+    Serial.println("start");
+    Serial.println((const char *)itr->c_str()); //※
+    //array.add((const char *)itr->c_str()); 
+    Serial.println(array.add((const char *)itr->c_str()));
+    Serial.println("done");
   }
   char buff[255];
   root.printTo(buff, 255);
-
-  send(buff, address, port);
+*/
+if(isCreatedMyAbilityBuff){
+  send(myAbilityBuff, address, port);
+}
 
   Serial.print("send available: ");
-  Serial.println(buff);
+  Serial.println(myAbilityBuff);
 }
 
 void PeripheralManager::sendAlive()
@@ -193,6 +236,18 @@ PeripheralManager::PeripheralDevice *PeripheralManager::getDevice(IPAddress &add
     }
   }
   return pRet;
+}
+
+bool PeripheralManager::containsNestedKey(const JsonObject& obj, const char* key) {
+    for (const JsonPair& pair : obj) {
+        if (!strcmp(pair.key, key))
+            return true;
+
+        if (containsNestedKey(pair.value.as<JsonObject>(), key)) 
+            return true;
+    }
+
+    return false;
 }
 
 

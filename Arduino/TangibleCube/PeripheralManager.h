@@ -2,6 +2,8 @@
 #include <WiFiUDP.h>
 #include <list>
 #include <string>
+#include <ArduinoJson.h>
+#include "LED.h"
 
 class PeripheralManager
 {
@@ -13,7 +15,9 @@ public:
   bool send(const char *pData, const char *pAddress, int port);
   bool send(const char *pData, IPAddress address, int port);
   void update();
-
+  void createAbilityBuffer();
+  void onLED(uint8_t r, uint8_t g, uint8_t b){ led.onLED(r, g, b); };
+  
   typedef struct _PeripheralDevice
   {
     IPAddress address;
@@ -41,6 +45,12 @@ private:
   WiFiUDP m_udp;
   std::list<std::string> m_ability;
   std::list<PeripheralDevice> m_devices;
+
+  LED led;
+  bool isCreatedMyAbilityBuff;
+  char myAbilityBuff[255]; //sendAvailableで送るためのabilityのJson文字列
+  bool containsNestedKey(const JsonObject& obj, const char* key);
+
 };
 
 

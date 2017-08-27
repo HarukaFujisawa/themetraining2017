@@ -8,13 +8,12 @@ namespace Gogyo.Network
     [RequireComponent(typeof(UDP_Receiver))]
     public class PeripheralManager : MonoBehaviour
     {
-        public static PeripheralManager instance;
-
         private UDP_Receiver m_udp;
         private float m_searchRate = 10.0f;
+        [SerializeField]
         private List<PeripheralConnectedDevice> m_connectedDevices;
+        [SerializeField]
         private List<PeripheralDevice> m_registeredDevices;
-        private List<string> m_ability;
 
         const string BROADCAST_ADDRESS = "255.255.255.255";
 
@@ -22,25 +21,6 @@ namespace Gogyo.Network
         {
             m_connectedDevices = new List<PeripheralConnectedDevice>();
             m_registeredDevices = new List<PeripheralDevice>();
-            m_ability = new List<string>();
-
-            m_ability.Add("hololens");
-        }
-
-        void Awake()
-        {
-            if (instance == null)
-            {
-
-                instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else
-            {
-
-                Destroy(gameObject);
-            }
-
         }
 
         // Use this for initialization
@@ -51,9 +31,20 @@ namespace Gogyo.Network
             InvokeRepeating("SendSearch", 1.0f, m_searchRate);
         }
 
+        private float m_latestAliveCheck = 0;
         // Update is called once per frame
         void Update()
         {
+
+            // 定期的にaliveをチェックする.
+            if(Time.time - m_latestAliveCheck > 3.0f)
+            {
+                for(int i = m_connectedDevices.Count - 1; i >= 0; i--)
+                {   // 削除するのでforeachは使えない
+                    m_connectedDevices[i].CheckAlive();
+                }
+                m_latestAliveCheck = Time.time;
+            }
         }
 
         void OnReceive(string data, string address, int port)
@@ -64,33 +55,42 @@ namespace Gogyo.Network
                 if (null != text)
                 {
                     text.text = data + " from " + address + ":" + port;
-                    Debug.Log(data + " from " + address + ":" + port);
                 }
 
-                PeripheralConnectedDevice device = FindByAddress(address, port);
-
                 PeripheralProtocol prtcl = JsonUtility.FromJson<PeripheralProtocol>(data);
+                int devidx = GetDeviceIdxFromJson(data);
+                PeripheralConnectedDevice device = null;
+                {
+                    // 接続しているPeripheralConnectedDeviceを取得する
+                    device = FindConnectedDevice(address, port, devidx);
+                }
+
                 switch (prtcl.pcmd)
                 {
                     case "search":
-                        SendAvailable(address, port);
+                        {
+                            SendAvailable(address, port);
+                            Debug.Log("[GogyoNetwork]: Received search pcmd from " + address + ":" + port);
+                        }
                         break;
                     case "available":
                         {
                             PeripheralAvailable p = JsonUtility.FromJson<PeripheralAvailable>(data);
                             if (null == device)
-                            {   // 新規のデバイス.
+                            {
                                 device = new PeripheralConnectedDevice(address, port, this);
                                 foreach (string a in p.ability)
                                 {
                                     device.Ability.Add(a);
                                 }
-                                m_connectedDevices.Add(device);
+
+                                Debug.Log("[GogyoNetwork]: Received available pcmd from " + address + ":" + port + ", data: " + data);
 
                                 if (TryMatching(device))
                                 {
                                     // 対応するデバイスみつかった.
-                                    SendRequest(address, port);
+                                    SendRequest(address, port, p.devidx);
+                                    m_connectedDevices.Add(device);
                                 }
                             }
                             else
@@ -100,19 +100,29 @@ namespace Gogyo.Network
                         }
                         break;
                     case "request":
-                        if(null != device)
                         {
-                            TryMatching(device);
+                            PeripheralProtocolEx p = JsonUtility.FromJson<PeripheralProtocolEx>(data);
+                            Debug.Log("[GogyoNetwork]: Received request pcmd from " + address + ":" + port + ", DeviceIdx: " + p.devidx );
 
-                            if(null != device.Target)
+                            if(p.devidx < m_registeredDevices.Count)
                             {
-                                device.Target.OnRequested();
+                                PeripheralConnectedDevice d = new PeripheralConnectedDevice(address, port, this);
+
+                                if (TryMatching(d, p.devidx))
+                                {
+                                    m_connectedDevices.Add(d);
+                                    if (null != device.Target)
+                                    {
+                                        device.Target.OnRequested();
+                                    }
+                                }
                             }
                         }
                         break;
                     case "alive":
                         if(null != device)
                         {
+                            Debug.Log("[GogyoNetwork]: Received alive pcmd from " + address + ":" + port + ": " + device.TargetDeviceIndex);
                             device.ReceiveAlive();
                         }
                         break;
@@ -120,6 +130,7 @@ namespace Gogyo.Network
                         {
                             if (null != device)
                             {
+                                Debug.Log("[GogyoNetwork]: Received bye pcmd from " + address + ":" + port + ": " + device.TargetDeviceIndex);
                                 ProcessBye(device);
                             }
                         }
@@ -127,21 +138,45 @@ namespace Gogyo.Network
 
                     default:
                         // PeripheralDeviceに処理を委譲.
-                        if (null != device)
+                        if (null != device && null != device.Target)
                         {
-                            device.OnReceive(data, address, port);
+                            device.Target.OnReceive(data, address, port);
+                        } else
+                        {
+                            // devidxが書かれていない通信内容は同じデバイスを登録している全員に伝える.
+                            List<PeripheralConnectedDevice> devices = FindByAddress(address, port);
+                            foreach(PeripheralConnectedDevice d in devices)
+                            {
+                                if (null != d.Target)
+                                {
+                                    d.Target.OnReceive(data, address, port);
+                                }
+                            }
                         }
                         break;
                 }
             }
         }
 
-        public PeripheralConnectedDevice FindByAddress(string address, int port)
+        public List<PeripheralConnectedDevice> FindByAddress(string address, int port)
+        {
+            List<PeripheralConnectedDevice> ret = new List<PeripheralConnectedDevice>();
+            foreach (PeripheralConnectedDevice d in m_connectedDevices)
+            {
+                if (d.IsSame(address, port))
+                {
+                    ret.Add(d);
+                }
+            }
+            return ret;
+        }
+
+        public PeripheralConnectedDevice FindConnectedDevice(string address, int port, int session)
         {
             PeripheralConnectedDevice ret = null;
             foreach (PeripheralConnectedDevice d in m_connectedDevices)
             {
-                if (d.IsSame(address, port))
+                if (d.IsSame(address, port, session))
                 {
                     ret = d;
                     break;
@@ -153,6 +188,10 @@ namespace Gogyo.Network
         public void Register(PeripheralDevice device)
         {
             m_registeredDevices.Add(device);
+            foreach(PeripheralConnectedDevice d in m_connectedDevices)
+            {   // ちょっと非効率.
+                TryMatching(d);
+            }
         }
 
         public void UnRegister(PeripheralDevice device)
@@ -160,15 +199,33 @@ namespace Gogyo.Network
             m_registeredDevices.Remove(device);
         }
 
+        public bool TryMatching(PeripheralConnectedDevice connectedDevice, int deviceIdx)
+        {
+            bool ret = false;
+
+            if (deviceIdx >= 0 && deviceIdx < m_registeredDevices.Count)
+            {
+                PeripheralDevice registeredDevice = m_registeredDevices[deviceIdx];
+                if (!registeredDevice.IsAlreadyConnected(connectedDevice))  // 同じコネクションを２つ張らない
+                {
+                    if (!connectedDevice.IsMatched && registeredDevice.IsAcceptable(connectedDevice))
+                    {
+                        connectedDevice.Match(registeredDevice, deviceIdx);
+                        registeredDevice.Match(connectedDevice);
+                        ret = true;
+                    }
+                }
+            }
+            return ret;
+        }
+
         public bool TryMatching(PeripheralConnectedDevice device)
         {
             bool ret = false;
-            foreach (PeripheralDevice d in m_registeredDevices)
+            for(int i = 0; i < m_registeredDevices.Count; i++)
             {
-                if (!d.IsMatched && !device.IsMatched && d.IsAcceptable(device))
+                if (TryMatching(device, i))
                 {
-                    device.Match(d);
-                    d.Match(device);
                     ret = true;
                     break;
                 }
@@ -197,27 +254,52 @@ namespace Gogyo.Network
 
         private void SendAvailable(string address, int port)
         {
-            PeripheralAvailable p = new PeripheralAvailable();
-            p.pcmd = "available";
-            p.ability = new string[m_ability.Count];
-            int i = 0;
-            foreach(string a in m_ability)
+            int idx = 0;
+            foreach (PeripheralDevice d in m_registeredDevices)
             {
-                p.ability[i] = a;
-                i++;
+                PeripheralAvailable p = new PeripheralAvailable();
+                p.pcmd    = "available";
+                p.ability = new string[d.CapableAbility.Count];
+                p.devidx  = idx;
+                int i = 0;
+                foreach (string a in d.CapableAbility)
+                {
+                    p.ability[i] = a;
+                    i++;
+                }
+                m_udp.Send(JsonUtility.ToJson(p), address, port);
+
+                idx++;
             }
+        }
+
+        private void SendRequest(string address, int port, int deviceIdx)
+        {
+            PeripheralProtocolEx p = new PeripheralProtocolEx();
+            p.pcmd = "request";
+            p.devidx = deviceIdx;
             m_udp.Send(JsonUtility.ToJson(p), address, port);
         }
 
-        private void SendRequest(string address, int port)
+        private int GetDeviceIdxFromJson(string data)
         {
-            m_udp.Send("{\"pcmd\":\"request\"}", address, port);
+            PeripheralProtocolEx p = new PeripheralProtocolEx();
+            p.devidx = -1;
+            p = JsonUtility.FromJson<PeripheralProtocolEx>(data);
+            if(null != p)
+            {
+                return p.devidx;
+            }
+            return -1;
         }
 
         public void ProcessBye(PeripheralConnectedDevice device)
         {
-            device.Target.UnMatch();
-            device.UnMatch();
+            if (null != device.Target)
+            {
+                device.Target.UnMatch(device);
+                device.UnMatch();
+            }
             m_connectedDevices.Remove(device);
         }
 
@@ -230,11 +312,17 @@ namespace Gogyo.Network
 
         //  Class for JSON encode/decode.
         [System.Serializable]
-        public class PeripheralAvailable : PeripheralProtocol
+        public class PeripheralProtocolEx : PeripheralProtocol
+        {
+            public int devidx;
+        }
+
+        //  Class for JSON encode/decode.
+        [System.Serializable]
+        public class PeripheralAvailable : PeripheralProtocolEx
         {
             public string[] ability;
         }
-
     }
 }
 

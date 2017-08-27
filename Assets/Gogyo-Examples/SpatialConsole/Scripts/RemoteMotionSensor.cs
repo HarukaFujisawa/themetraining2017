@@ -13,7 +13,7 @@ public class RemoteMotionSensor : PeripheralDevice
     public float parentHeight;
     public float duckscale;
 
-    public string[] ability;
+    //public string[] ability;
 
     public float acc_thresh;
     public float footStep;
@@ -24,6 +24,9 @@ public class RemoteMotionSensor : PeripheralDevice
 
     public float jumpPress1;
     public float jumpPress2;
+
+    //落ち込んだ時の色
+    public Color LEDColor_disappointed;
 
     private Vector3 acc_prev;
     private Vector3 static_acc;
@@ -37,10 +40,10 @@ public class RemoteMotionSensor : PeripheralDevice
 
     protected override void Start()
     {
-        for (int i = 0; i < ability.Length; i++)
-        {
-            Ability.Add(ability[i]);
-        }
+        //for (int i = 0; i < ability.Length; i++)
+        //{
+        //    Ability.Add(ability[i]);
+        //}
         //Ability.Add("motion");
         //Ability.Add("push");
         base.Start();
@@ -53,7 +56,9 @@ public class RemoteMotionSensor : PeripheralDevice
 
         parentWidth = transform.parent.GetComponent<Vuforia.ImageTargetBehaviour>().GetSize().x;
         parentHeight = transform.parent.GetComponent<Vuforia.ImageTargetBehaviour>().GetSize().y;
-        duckscale = transform.localScale.x;
+        duckscale = 1 / transform.parent.localScale.x; //playgroundの縮尺になっちゃうから
+        transform.localScale = new Vector3(duckscale, duckscale, duckscale);
+
 
 
     }
@@ -74,10 +79,10 @@ public class RemoteMotionSensor : PeripheralDevice
 #endif
         }
 
-        if (Input.GetKeyUp(KeyCode.L))
-        {
-            base.Send("Key Pressed!! to " + base.Target.Address); //これでこの相手のPeripheralDeviceにデータが送れる
-        }
+        //if (Input.GetKeyUp(KeyCode.L))
+        //{
+        //    base.Send("Key Pressed!! to " + base.Target.Address); //これでこの相手のPeripheralDeviceにデータが送れる
+        //}
 
     }
 
@@ -115,6 +120,7 @@ public class RemoteMotionSensor : PeripheralDevice
                     transform.rotation = q_i * new Quaternion(motion.rot.x, -motion.rot.z, -motion.rot.y, motion.rot.w); //fuji
                     //DuckObj.transform.localRotation = q_i * new Quaternion(motion.rot.x, -motion.rot.z, -motion.rot.y, motion.rot.w); //fuji
 
+
                     //軸合わせ試す
                     //transform.position = new Vector3(transform.position.x, transform.position.y, -transform.position.z);
                     //transform.Rotate(new Vector3(0f, -90f, 0f));
@@ -141,8 +147,8 @@ public class RemoteMotionSensor : PeripheralDevice
                             if (-parentWidth / 2 < transform.localPosition.x / duckscale && transform.localPosition.x / duckscale < parentWidth / 2
                              && -parentHeight / 2 < transform.localPosition.z / duckscale && transform.localPosition.z / duckscale < parentHeight / 2) //playgorund外に出ないように
                             {
-                                transform.position += transform.forward * footStep;
-                                transform.localPosition = new Vector3(transform.localPosition.x, 0.063f, transform.localPosition.z); //高さはplaygroundの高さに固定
+                                transform.position += new Vector3(transform.forward.x, 0f, transform.forward.z) * footStep;
+                                //transform.localPosition = new Vector3(transform.localPosition.x, 0.063f, transform.localPosition.z); //高さはplaygroundの高さに固定
                             }
                             else
                             {
@@ -186,23 +192,34 @@ public class RemoteMotionSensor : PeripheralDevice
                             break;
                         case 2:
 
-                            audioSource.Play();
-
                             if ((push.time >= 0f && push.time <= jumpTime1) || (push.MaxDiff >= 0f && push.MaxDiff <= jumpPress1))
                             {
                                 Debug.Log("Low");
-                                jumpAnimator.SetTrigger("lowTrigger");
-                                //jumpAnimator.Play("Jump_low");
+                                //jumpAnimator.SetTrigger("lowTrigger");
+                                ////jumpAnimator.Play("Jump_low");
                             }
                             else if ((push.time >= jumpTime1 && push.time <= jumpTime2) || (push.MaxDiff >= jumpPress1 && push.MaxDiff <= jumpPress2))
                             {
                                 Debug.Log("Mid");
+                                audioSource.Play();
                                 jumpAnimator.Play("Jump_mid");
                             }
                             else if (push.time >= jumpTime2 || push.MaxDiff >= jumpPress2)
                             {
                                 Debug.Log("High");
-                                jumpAnimator.Play("Jump_high");
+                                //jumpAnimator.Play("Jump_high");
+                                //青くする
+                                transform.GetChild(0).GetComponent<Renderer>().material.color = LEDColor_disappointed;
+                                //LEDも青く
+                                //Send("{\"event\":\"blueLED\"}");
+                                string sendMessage = "{\"event\":{\"onLED\":[" + (LEDColor_disappointed.r * 255).ToString() + ","
+                                                                              + (LEDColor_disappointed.g * 255).ToString() + ","
+                                                                              + (LEDColor_disappointed.b * 255).ToString() + "]}}";
+                                Send(sendMessage);
+                                Send(sendMessage);
+                                Debug.Log(sendMessage);
+
+
                             }
                             break;
 

@@ -3,38 +3,38 @@ using System.Collections.Generic;
 
 namespace Gogyo.Network
 {
+    [System.Serializable]
     public abstract class PeripheralDevice : MonoBehaviour
     {
-        //[SerializeField]
-        //public PeripheralManager m_manager = null;
-
-        private PeripheralConnectedDevice m_target = null;
+        [SerializeField]
+        public PeripheralManager m_manager = null;
+        [SerializeField]
+        private List<PeripheralConnectedDevice> m_target;
 
         protected virtual void Start()
         {
-            //m_manager.Register(this);
-            PeripheralManager.instance.Register(this);
+            m_manager.Register(this);
         }
 
         protected virtual void OnDisable()
         {
-            //m_manager.UnRegister(this);
-            PeripheralManager.instance.UnRegister(this);
+            m_manager.UnRegister(this);
         }
 
         public PeripheralDevice()
         {
-            m_ability = new List<string>();
+            m_requireAbility = new List<string>();
+            m_capableAbility = new List<string>();
+            m_target = new List<PeripheralConnectedDevice>();
         }
 
         public abstract void OnReceive(string data, string address, int port);
 
-        public virtual void OnConnected()
-        {   // 単純にリクエストしてみる.
-            Send("{\"pcmd\":\"request\"}");
+        public virtual void OnConnected(PeripheralConnectedDevice d)
+        {
         }
 
-        public virtual void OnDisconnected()
+        public virtual void OnDisconnected(PeripheralConnectedDevice d)
         {
         }
 
@@ -44,16 +44,16 @@ namespace Gogyo.Network
 
         public void Send(string data)
         {
-            if (null != m_target)
+            foreach(PeripheralConnectedDevice d in m_target)
             {
-                m_target.Send(data);
+                d.Send(data);
             }
         }
 
         public virtual bool IsAcceptable(PeripheralConnectedDevice cd)
         {
             bool ret = false;
-            if(cd.IsCapable(m_ability))
+            if(cd.IsCapable(m_requireAbility))
             {   // 登録されているすべてのabilityを満たすものを受理する.
                 ret = true;
             }
@@ -62,43 +62,70 @@ namespace Gogyo.Network
 
         public bool IsMatched
         {
-            get { return m_target != null; }
+            get { return m_target.Count > 0; }
         }
 
-        public void Match(PeripheralConnectedDevice target)
+        public void Match(PeripheralConnectedDevice connectedDevice)
         {
-            m_target = target;
-            OnConnected();
+            if(m_target.Count == 0)
+            {
+                InvokeRepeating("SendAlive", 3.0f, 3.0f);
+            }
 
-            InvokeRepeating("SendAlive", 5.0f, 5.0f);
+            m_target.Add(connectedDevice);
+            OnConnected(connectedDevice);
         }
 
-        public void UnMatch()
+        public void UnMatch(PeripheralConnectedDevice connectedDevice)
         {
-            m_target = null;
-            OnDisconnected();
+            OnDisconnected(connectedDevice);
+            m_target.Remove(connectedDevice);
 
-            CancelInvoke("SendAlive");
+            if (m_target.Count == 0)
+            {
+                CancelInvoke("SendAlive");
+            }
         }
 
         private void SendAlive()
         {
-            if(null != m_target)
+            foreach(PeripheralConnectedDevice d in m_target)
             {
-                m_target.SendAlive();
+                d.SendAlive();
             }
         }
 
-        public PeripheralConnectedDevice Target
+        public bool IsAlreadyConnected(PeripheralConnectedDevice connectedDevice)
+        {
+            bool ret = false;
+            foreach(PeripheralConnectedDevice d in m_target)
+            {
+                if(d.IsSame(connectedDevice))
+                {
+                    ret = true;
+                    break;
+                }
+            }
+            return ret;
+        }
+
+        public List<PeripheralConnectedDevice> Target
         {
             get { return m_target; }
         }
 
-        public List<string> Ability
+        public List<string> RequireAbility
         {
-            get { return m_ability; }
+            get { return m_requireAbility; }
+        }
+        public List<string> CapableAbility
+        {
+            get { return m_capableAbility; }
         }
 
-        private List<string> m_ability;
+        [SerializeField]
+        private List<string> m_requireAbility;
+        [SerializeField]
+        private List<string> m_capableAbility;
     }
 }

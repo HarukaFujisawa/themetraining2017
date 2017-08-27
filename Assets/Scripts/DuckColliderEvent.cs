@@ -10,6 +10,9 @@ public class DuckColliderEvent : MonoBehaviour {
     AudioSource audiosource;
     RemoteMotionSensor remoteMotionSensor;
 
+    public Color LEDColor_enter;
+    public Color LEDColor_exit;
+
 
     // Use this for initialization
     void Start () {
@@ -24,35 +27,69 @@ public class DuckColliderEvent : MonoBehaviour {
 
     private void OnTriggerEnter(Collider collider)
     {
-        Debug.Log(collider.gameObject.name + " enter!!");
+        if (remoteMotionSensor != null)
+        {
 
-        effect = Instantiate(Resources.Load(EFFECT_PATH)) as GameObject;
-        effect.transform.SetParent(this.transform.parent);
-        effect.transform.localPosition = new Vector3(0f, 0.1f, 0f);
-        effect.transform.localScale = new Vector3(0.05f, 0.11f, 0.05f);
+            Debug.Log(collider.gameObject.name + " enter!!");
 
-        audiosource.Play();
+            effect = Instantiate(Resources.Load(EFFECT_PATH)) as GameObject;
+            effect.transform.SetParent(this.transform.parent);
+            effect.transform.localPosition = new Vector3(0f, 0.1f, 0f);
+            effect.transform.localScale = new Vector3(0.05f, 0.11f, 0.05f);
 
-        //ぶつかったことをセンサ側に通達
-        //remoteMotionSensor.Send("Conflict!! to " + remoteMotionSensor.Target.Address);
-        remoteMotionSensor.Send("{\"event\":\"conflictEnter\"}");
+            audiosource.Play();
+
+            GetComponent<Renderer>().material.color = LEDColor_enter; //ピンク
+
+            //ぶつかったことをセンサ側に通達 1回だと受け取れないことがあるから2回送る
+            //remoteMotionSensor.Send("Conflict!! to " + remoteMotionSensor.Target.Address);
+            //remoteMotionSensor.Send("{\"event\":\"conflictEnter\"}");
+            string sendMessage = "{\"event\":{\"onLED\":[" + (LEDColor_enter.r * 255).ToString() + ","
+                                                          + (LEDColor_enter.g * 255).ToString() + ","
+                                                          + (LEDColor_enter.b * 255).ToString() + "]}}";
+            remoteMotionSensor.Send(sendMessage);
+            remoteMotionSensor.Send(sendMessage);
+            Debug.Log(sendMessage + " " + gameObject.transform.parent.name);
+        }
 
     }
     private void OnTriggerExit(Collider collider)
     {
-        Debug.Log(collider.gameObject.name + " exit..");
-        if(effect != null)
+        if (remoteMotionSensor != null)
         {
-            Destroy(effect);
 
-            if(audiosource != null && audiosource.isPlaying)
+            Debug.Log(collider.gameObject.name + " exit..");
+            if (effect != null)
             {
-                audiosource.Stop();
+                Destroy(effect);
+
+                if (audiosource != null && audiosource.isPlaying)
+                {
+                    audiosource.Stop();
+                }
             }
+
+            GetComponent<Renderer>().material.color = LEDColor_exit;
+
+
+            //ぶつかったことをセンサ側に通達 1回だと受け取れないことがあるから2回送る
+            //remoteMotionSensor.Send("{\"event\":\"conflictExit\"}");
+            string sendMessage = "{\"event\":{\"onLED\":[" + (LEDColor_exit.r * 255).ToString() + ","
+                                                          + (LEDColor_exit.g * 255).ToString() + ","
+                                                          + (LEDColor_exit.b * 255).ToString() + "]}}";
+            remoteMotionSensor.Send(sendMessage);
+            remoteMotionSensor.Send(sendMessage);
+            Debug.Log(sendMessage + " " + gameObject.transform.parent.name);
         }
 
-        //ぶつかったことをセンサ側に通達
-        remoteMotionSensor.Send("{\"event\":\"conflictExit\"}");
+    }
 
+    private void OnApplicationQuit()
+    {
+        if (remoteMotionSensor != null)
+        {
+            remoteMotionSensor.Send("{\"event\":\"offLED\"}");
+            remoteMotionSensor.Send("{\"event\":\"offLED\"}");
+        }
     }
 }

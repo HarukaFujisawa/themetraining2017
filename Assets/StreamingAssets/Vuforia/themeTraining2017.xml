@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <QCARConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="qcar_config.xsd">
   <Tracking>
-    <ImageTarget name="MOS" size="0.286000 0.202305" />
-    <ImageTarget name="persian_carpets2" size="0.195000 0.298316" />
-    <ImageTarget name="persian_carpets" size="0.286000 0.437530" />
-    <ImageTarget name="chips" size="0.286000 0.200200" />
-    <ImageTarget name="room17-2" size="0.286000 0.173333" />
-    <ImageTarget name="flooring" size="0.286000 0.187697" />
+    <ImageTarget name="chips" size="0.218000 0.152600" />
+    <ImageTarget name="ROOM" size="0.218000 0.169870" />
+    <ImageTarget name="persian_carpet_xperia" size="0.218000 0.135065" />
   </Tracking>
 </QCARConfig>

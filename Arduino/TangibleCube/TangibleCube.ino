@@ -1,4 +1,3 @@
-
 #include "mpu6050.h"
 #include "wifi_tool.h"
 #include "nzGyroPosture.h"
@@ -8,6 +7,7 @@
 #include <ArduinoJson.h>
 #include "PeripheralManager.h"
 #include "pushRecognizer.h"
+
 
 const static char *s_pHostName = "spatial_dev_01"; // set device hostname for mDNS
 const char *s_pRemoteAddress = "192.168.11.5";
@@ -38,7 +38,7 @@ void setup()
   
   initITGMPU();
   mPushRecog.init();
-  wifiConnect();
+  wifiConnect();  
 
   pinMode(LED_PIN, OUTPUT);
 
@@ -47,8 +47,11 @@ void setup()
     // Registering device ability.
     s_remote.getAbility().push_back("gyroscope");
     s_remote.getAbility().push_back("accelerometer");
-    s_remote.getAbility().push_back("motion1"); //ぱぺぞうの番号によってここの数字を変える
-    s_remote.getAbility().push_back("push1");   //ぱぺぞうの番号によってここの数字を変える
+    s_remote.getAbility().push_back("motion2"); //ぱぺぞうの番号によってここの数字を変える
+    s_remote.getAbility().push_back("push2");   //ぱぺぞうの番号によってここの数字を変える
+
+    s_remote.createAbilityBuffer();
+    s_remote.onLED(255, 255, 255);
 
     Serial.print("Start Listing UDP port : ");
     Serial.println(s_localPort);
@@ -67,6 +70,7 @@ void setup()
 
 void loop()
 { 
+#if true 
   updateITGMPU();
 
   //*******Gyro***********//
@@ -78,7 +82,7 @@ void loop()
     s_posture.inputAccelerometer(data.timestamp, acc);
   }
   //*******Gyro***********//
-
+   
   //*******Push Recognizer***********//
   Push pushResult = mPushRecog.input(millis());
   //Serial.println(mPushRecog.getPress());
@@ -93,7 +97,7 @@ void loop()
   }
   //*******Push Recognizer***********//
 
-  //Serial.println(mPushRecog.getDefaultPress());
+  #endif
   
   static long s_latestUpdate = 0;
   long curr = millis();
@@ -104,25 +108,26 @@ void loop()
 
   static int s_checkCount = 0;
   s_checkCount++;
-  if((s_checkCount % 3) == 0) { // == 0だお
-    s_remote.update();
-    s_dns.update();  
-
-    s_posture.update();
-    sendUDP_motion(data);        
-  } else {
-  }
+//  if((s_checkCount % 3) == 0) { // == 0だお
+//    s_remote.update();
+//    s_dns.update();  
+//
+//    s_posture.update();
+//    sendUDP_motion(data);        
+//  } else {
+//  }
 
   
-//  if((s_checkCount % 2) == 0) { // == 0だお
-//    s_remote.update();
-//    if((s_checkCount % 10) == 0) { // == 0だお
-//      s_dns.update();      
-//    }
-//  } else {
-//    s_posture.update();
-//    sendUDP_motion(data);
-//  }
+  if((s_checkCount % 2) == 0) { // == 0だお
+    s_remote.update();
+    if((s_checkCount % 10) == 0) { // == 0だお
+      s_dns.update();      
+    }
+  } else {
+    s_posture.update();
+    sendUDP_motion(data);
+  }
+
   
 #if false
 
@@ -190,6 +195,7 @@ static void sendUDP_motion(MotionSensorDataf &data)
   root.printTo(buff, 512);
 
   s_remote.send(buff);
+  //Serial.println(buff);
 }
 
 static void sendUDP_push(Push &p_data)

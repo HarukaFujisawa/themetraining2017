@@ -5,7 +5,7 @@ public class RemoteHololens : PeripheralDevice
 {
     protected override void Start()
     {
-        Ability.Add("hololens");
+        //Ability.Add("hololens");
         base.Start();
     }
 

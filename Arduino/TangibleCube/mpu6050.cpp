@@ -54,7 +54,7 @@ void initITGMPU()
 void updateITGMPU()
 {
   //noInterrupts();  // 割り込み禁止区間
-  // 譎る俣繧定ｨ域ｸｬ
+  // 時間を計測
   unsigned long startTime, endTime, procTime;
   startTime = micros();
   gyro3Axis();
@@ -145,7 +145,7 @@ void gyro3Axis()
 
   s_data.gx = (Value[0]<<8) | Value[1];
   s_data.gy = (Value[2]<<8) | Value[3];
-  s_data.gz = (Value[4]<<8) | Value[5];  
+  s_data.gz = (Value[4]<<8) | Value[5];  //0になってトルネードする  
 }
 
 void acc3Axis()
