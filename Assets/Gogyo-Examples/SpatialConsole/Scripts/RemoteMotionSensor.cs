@@ -7,7 +7,10 @@ public class RemoteMotionSensor : PeripheralDevice
 {
 
     public Animator jumpAnimator;
+
     public AudioSource audioSource;
+    public AudioClip audioClip_puff;
+    public AudioClip audioClip_dissapoiinted;
 
     public float parentWidth;
     public float parentHeight;
@@ -52,7 +55,7 @@ public class RemoteMotionSensor : PeripheralDevice
         q_i = new Quaternion(0f, 0f, 0f, 1f);
 
         jumpAnimator = transform.GetChild(0).GetComponent<Animator>();
-        audioSource = gameObject.GetComponent<AudioSource>();
+        audioSource = GetComponent<AudioSource>();
 
         parentWidth = transform.parent.GetComponent<Vuforia.ImageTargetBehaviour>().GetSize().x;
         parentHeight = transform.parent.GetComponent<Vuforia.ImageTargetBehaviour>().GetSize().y;
@@ -201,6 +204,7 @@ public class RemoteMotionSensor : PeripheralDevice
                             else if ((push.time >= jumpTime1 && push.time <= jumpTime2) || (push.MaxDiff >= jumpPress1 && push.MaxDiff <= jumpPress2))
                             {
                                 Debug.Log("Mid");
+                                audioSource.clip = audioClip_puff;
                                 audioSource.Play();
                                 jumpAnimator.Play("Jump_mid");
                             }
@@ -208,10 +212,13 @@ public class RemoteMotionSensor : PeripheralDevice
                             {
                                 Debug.Log("High");
                                 //jumpAnimator.Play("Jump_high");
+
+                                audioSource.clip = audioClip_dissapoiinted;
+                                audioSource.Play();
+
                                 //青くする
                                 transform.GetChild(0).GetComponent<Renderer>().material.color = LEDColor_disappointed;
                                 //LEDも青く
-                                //Send("{\"event\":\"blueLED\"}");
                                 string sendMessage = "{\"event\":{\"onLED\":[" + (LEDColor_disappointed.r * 255).ToString() + ","
                                                                               + (LEDColor_disappointed.g * 255).ToString() + ","
                                                                               + (LEDColor_disappointed.b * 255).ToString() + "]}}";

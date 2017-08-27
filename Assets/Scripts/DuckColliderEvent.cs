@@ -34,7 +34,7 @@ public class DuckColliderEvent : MonoBehaviour {
 
             effect = Instantiate(Resources.Load(EFFECT_PATH)) as GameObject;
             effect.transform.SetParent(this.transform.parent);
-            effect.transform.localPosition = new Vector3(0f, 0.1f, 0f);
+            effect.transform.localPosition = new Vector3(0f, -0.03f, 0f);
             effect.transform.localScale = new Vector3(0.05f, 0.11f, 0.05f);
 
             audiosource.Play();

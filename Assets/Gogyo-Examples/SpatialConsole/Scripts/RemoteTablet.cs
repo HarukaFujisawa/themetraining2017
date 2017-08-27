@@ -32,7 +32,7 @@ public class RemoteTablet : PeripheralDevice {
         var position = JsonUtility.FromJson<IndexPositionProtocol>(data);
 
         //今向いてる方向とは逆向きに、ネコ土台の半径の長さ分、オフセット
-        me.transform.localPosition = getPosition(position) - me.transform.forward * rad / parentScale;
+        me.transform.localPosition = getPosition(position); // - me.transform.forward * rad / parentScale;
 
     }
 
