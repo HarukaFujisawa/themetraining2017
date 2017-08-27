@@ -1475,7 +1475,7 @@ MonoBehaviour:
   - motion1
   - push1
   m_capableAbility:
-  - hololens
+  - hololens1
   jumpAnimator: {fileID: 0}
   audioSource: {fileID: 0}
   audioClip_puff: {fileID: 8300000, guid: f69900f775523e543a4c59594c61ff66, type: 3}
