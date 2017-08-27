@@ -1474,7 +1474,8 @@ MonoBehaviour:
   m_requireAbility:
   - motion1
   - push1
-  m_capableAbility: []
+  m_capableAbility:
+  - hololens
   jumpAnimator: {fileID: 0}
   audioSource: {fileID: 0}
   audioClip_puff: {fileID: 8300000, guid: f69900f775523e543a4c59594c61ff66, type: 3}
@@ -1909,8 +1910,7 @@ MonoBehaviour:
   m_requireAbility:
   - motion2
   - push2
-  m_capableAbility:
-  - hololens1
+  m_capableAbility: []
   jumpAnimator: {fileID: 0}
   audioSource: {fileID: 0}
   audioClip_puff: {fileID: 0}
@@ -7636,7 +7636,7 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1538232144}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dd6e78fdf338a6d4cb946f6636514194, type: 3}
   m_Name: 
