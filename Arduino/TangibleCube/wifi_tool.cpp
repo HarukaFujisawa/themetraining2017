@@ -1,10 +1,10 @@
 
 #include <ESP8266WiFi.h>
 
-//const char* ssid = "Puppetalk";//"aterm-92ffc1-g";
-//const char* password = "atddixd2";//"4ff583971aecc";
-const char* ssid = "aterm-3d20cb-g";
-const char* password = "745ca754993a4";
+const char* ssid = "Puppetalk";//"aterm-92ffc1-g";
+const char* password = "atddixd2";//"4ff583971aecc";
+//const char* ssid = "aterm-3d20cb-g";
+//const char* password = "745ca754993a4";
 
 bool wifiConnect()
 {

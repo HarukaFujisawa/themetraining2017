@@ -47,8 +47,8 @@ void setup()
     // Registering device ability.
     s_remote.getAbility().push_back("gyroscope");
     s_remote.getAbility().push_back("accelerometer");
-    s_remote.getAbility().push_back("motion2"); //ぱぺぞうの番号によってここの数字を変える
-    s_remote.getAbility().push_back("push2");   //ぱぺぞうの番号によってここの数字を変える
+    s_remote.getAbility().push_back("motion1"); //ぱぺぞうの番号によってここの数字を変える
+    s_remote.getAbility().push_back("push1");   //ぱぺぞうの番号によってここの数字を変える
 
     s_remote.createAbilityBuffer();
     s_remote.onLED(255, 255, 255);
