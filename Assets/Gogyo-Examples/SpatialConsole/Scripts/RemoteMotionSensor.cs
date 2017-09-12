@@ -206,6 +206,7 @@ public class RemoteMotionSensor : PeripheralDevice
                                 Debug.Log("Mid");
                                 audioSource.clip = audioClip_puff;
                                 audioSource.Play();
+
                                 jumpAnimator.Play("Jump_mid");
                             }
                             else if (push.time >= jumpTime2 || push.MaxDiff >= jumpPress2)

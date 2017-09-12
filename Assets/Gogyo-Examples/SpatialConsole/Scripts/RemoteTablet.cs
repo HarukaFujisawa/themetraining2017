@@ -8,6 +8,7 @@ public class RemoteTablet : PeripheralDevice {
 
     //public string[] ability;
 
+    public AudioSource audioSource; //足音
     public GameObject me; //自分の人形
     public int divWidth = 5; 
     public int divHeight = 3;
@@ -22,7 +23,7 @@ public class RemoteTablet : PeripheralDevice {
     float areaWidth;
     float areaHeight;
 
-    Vector3 currentPos;
+    public float a = 0.1f; //移動の速さ
     Vector3 targetPos; //移動先の場所
 
     public override void OnReceive(string data, string address, int port)
@@ -32,7 +33,10 @@ public class RemoteTablet : PeripheralDevice {
         var position = JsonUtility.FromJson<IndexPositionProtocol>(data);
 
         //今向いてる方向とは逆向きに、ネコ土台の半径の長さ分、オフセット
-        me.transform.localPosition = getPosition(position); // - me.transform.forward * rad / parentScale;
+        //me.transform.localPosition = getPosition(position); // - me.transform.forward * rad / parentScale;
+
+        targetPos = getPosition(position);
+        audioSource.Play();
 
     }
 
@@ -53,11 +57,19 @@ public class RemoteTablet : PeripheralDevice {
         areaHeight = pgHeight / divHeight;
         //parentScale = transform.localScale.x;
         parentScale = transform.parent.localScale.x;
+
+        targetPos = me.transform.localPosition;
+
         base.Start();
     }
 	
 	// Update is called once per frame
 	void Update () {
+
+        if(Vector3.Distance(targetPos, me.transform.localPosition) > 0.001f)
+        {
+            me.transform.localPosition = me.transform.localPosition * a + targetPos * (1.0f - a);
+        }
 		
 	}
 

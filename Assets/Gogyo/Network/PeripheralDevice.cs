@@ -95,12 +95,12 @@ namespace Gogyo.Network
             }
         }
 
-        public bool IsAlreadyConnected(PeripheralConnectedDevice connectedDevice)
+        public bool IsAlreadyConnected(PeripheralConnectedDevice connectedDevice, int devidx)
         {
             bool ret = false;
             foreach(PeripheralConnectedDevice d in m_target)
             {
-                if(d.IsSame(connectedDevice))
+                if(d.IsSame(connectedDevice, devidx))
                 {
                     ret = true;
                     break;

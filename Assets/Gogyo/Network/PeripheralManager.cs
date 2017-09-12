@@ -59,6 +59,7 @@ namespace Gogyo.Network
 
                 PeripheralProtocol prtcl = JsonUtility.FromJson<PeripheralProtocol>(data);
                 int devidx = GetDeviceIdxFromJson(data);
+                //Debug.Log(data + " from " + address + ":" + port + " --- devidx: " + devidx);
                 PeripheralConnectedDevice device = null;
                 {
                     // 接続しているPeripheralConnectedDeviceを取得する
@@ -68,17 +69,24 @@ namespace Gogyo.Network
                 switch (prtcl.pcmd)
                 {
                     case "search":
-                        {
+                        {   // {"pcmd":"search"}
+                            // 機器探索のためのトリガ。broadcastアドレスに送信する。
                             SendAvailable(address, port);
                             Debug.Log("[GogyoNetwork]: Received search pcmd from " + address + ":" + port);
                         }
                         break;
                     case "available":
-                        {
+                        {   // {"pcmd":"available","devidx":N,"ability":["ability_1","ability_2",...]}
+                            //  機器探索への応答をPeripheralDevice単位で行い，同時にPeripheralDeviceのアビリティの通達を行う。
                             PeripheralAvailable p = JsonUtility.FromJson<PeripheralAvailable>(data);
+                            if(!data.Contains("\"devidx\""))
+                            {   // HololensのJsonUtilityが、メンバーがいないときに0を代入してしまう問題への対策.
+                                p.devidx = -1;
+                            }
+
                             if (null == device)
                             {
-                                device = new PeripheralConnectedDevice(address, port, this);
+                                device = new PeripheralConnectedDevice(address, port, this, p.ability);
                                 foreach (string a in p.ability)
                                 {
                                     device.Ability.Add(a);
@@ -86,10 +94,10 @@ namespace Gogyo.Network
 
                                 Debug.Log("[GogyoNetwork]: Received available pcmd from " + address + ":" + port + ", data: " + data);
 
-                                if (TryMatching(device))
+                                if (TryMatching(device, p.devidx))
                                 {
                                     // 対応するデバイスみつかった.
-                                    SendRequest(address, port, p.devidx);
+                                    SendRequest(address, port, p.devidx, GetDeviceIndex(device.Target));
                                     m_connectedDevices.Add(device);
                                 }
                             }
@@ -100,20 +108,25 @@ namespace Gogyo.Network
                         }
                         break;
                     case "request":
-                        {
-                            PeripheralProtocolEx p = JsonUtility.FromJson<PeripheralProtocolEx>(data);
-                            Debug.Log("[GogyoNetwork]: Received request pcmd from " + address + ":" + port + ", DeviceIdx: " + p.devidx );
+                        {   // {"pcmd":"request","devidx":N,"selfdevidx":M}
+                            // 接続要求の発行。発行元は接続を確立。devidxは要求先のデバイスインデックス。selfdevidxは要求元のデバイスインデックス。
+                            PeripheralRequestProtocol p = JsonUtility.FromJson<PeripheralRequestProtocol>(data);
+                            if(!data.Contains("\"devidx\""))
+                            {   // HololensのJsonUtilityが、メンバーがいないときに0を代入してしまう問題への対策.
+                                p.devidx = -1;
+                            }
+                            Debug.Log("[GogyoNetwork]: Received request pcmd from " + address + ":" + port + ", devidx: " + p.devidx + ", selfdevidx: " + p.selfdevidx );
 
                             if(p.devidx < m_registeredDevices.Count)
                             {
                                 PeripheralConnectedDevice d = new PeripheralConnectedDevice(address, port, this);
 
-                                if (TryMatching(d, p.devidx))
+                                if (ForceMatching(d, p.devidx, p.selfdevidx))
                                 {
                                     m_connectedDevices.Add(d);
-                                    if (null != device.Target)
+                                    if (null != d.Target)
                                     {
-                                        device.Target.OnRequested();
+                                        d.Target.OnRequested();
                                     }
                                 }
                             }
@@ -121,13 +134,15 @@ namespace Gogyo.Network
                         break;
                     case "alive":
                         if(null != device)
-                        {
+                        {   //  {"pcmd":"request","devidx":N}
+                            //  生存確認用の通達。
                             Debug.Log("[GogyoNetwork]: Received alive pcmd from " + address + ":" + port + ": " + device.TargetDeviceIndex);
                             device.ReceiveAlive();
                         }
                         break;
                     case "bye":
-                        {
+                        {   //  {"pcmd":"bye","devidx":N}
+                            //  一定時間生存確認が無い場合に通達して以後切断。
                             if (null != device)
                             {
                                 Debug.Log("[GogyoNetwork]: Received bye pcmd from " + address + ":" + port + ": " + device.TargetDeviceIndex);
@@ -158,6 +173,20 @@ namespace Gogyo.Network
             }
         }
 
+        private int GetDeviceIndex(PeripheralDevice dev)
+        {
+            int ret = 0;
+            for(int i = 0; i < m_registeredDevices.Count; i++)
+            {
+                if(m_registeredDevices[i] == dev)
+                {
+                    ret = i;
+                    break;
+                }
+            }
+            return ret;
+        }
+
         public List<PeripheralConnectedDevice> FindByAddress(string address, int port)
         {
             List<PeripheralConnectedDevice> ret = new List<PeripheralConnectedDevice>();
@@ -174,12 +203,29 @@ namespace Gogyo.Network
         public PeripheralConnectedDevice FindConnectedDevice(string address, int port, int session)
         {
             PeripheralConnectedDevice ret = null;
-            foreach (PeripheralConnectedDevice d in m_connectedDevices)
+            if (session >= 0 && session < m_registeredDevices.Count)
             {
-                if (d.IsSame(address, port, session))
+                foreach (PeripheralConnectedDevice d in m_registeredDevices[session].Target)
                 {
-                    ret = d;
-                    break;
+                    if (d.IsSame(address, port, d.TargetDeviceIndex))
+                    {
+                        ret = d;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                foreach(PeripheralDevice r in m_registeredDevices)
+                {
+                    foreach(PeripheralConnectedDevice d in r.Target)
+                    {
+                        if(d.IsSame(address, port))
+                        {
+                            return d;
+                        }
+
+                    }
                 }
             }
             return ret;
@@ -188,9 +234,11 @@ namespace Gogyo.Network
         public void Register(PeripheralDevice device)
         {
             m_registeredDevices.Add(device);
+            int i = 0;
             foreach(PeripheralConnectedDevice d in m_connectedDevices)
             {   // ちょっと非効率.
-                TryMatching(d);
+                TryMatching(d, i);
+                i++;
             }
         }
 
@@ -199,32 +247,88 @@ namespace Gogyo.Network
             m_registeredDevices.Remove(device);
         }
 
-        public bool TryMatching(PeripheralConnectedDevice connectedDevice, int deviceIdx)
+        // アビリティに関係なくPeripheralDeviceとPeripheralConnectedDeviceのマッチングをとる
+        public bool ForceMatching(PeripheralConnectedDevice connectedDevice, int regDeviceIdx, int cnctDeviceIdx)
         {
             bool ret = false;
 
-            if (deviceIdx >= 0 && deviceIdx < m_registeredDevices.Count)
+            if (regDeviceIdx >= 0 && regDeviceIdx < m_registeredDevices.Count)
             {
-                PeripheralDevice registeredDevice = m_registeredDevices[deviceIdx];
-                if (!registeredDevice.IsAlreadyConnected(connectedDevice))  // 同じコネクションを２つ張らない
+                PeripheralDevice registeredDevice = m_registeredDevices[regDeviceIdx];
+                if (!registeredDevice.IsAlreadyConnected(connectedDevice, cnctDeviceIdx))  // 同じコネクションを２つ張らない
                 {
-                    if (!connectedDevice.IsMatched && registeredDevice.IsAcceptable(connectedDevice))
+                    if (!connectedDevice.IsMatched)
                     {
-                        connectedDevice.Match(registeredDevice, deviceIdx);
+                        connectedDevice.Match(registeredDevice, cnctDeviceIdx);
                         registeredDevice.Match(connectedDevice);
                         ret = true;
                     }
                 }
             }
+            else
+            {
+                foreach (PeripheralDevice r in m_registeredDevices)
+                {
+                    if (!r.IsAlreadyConnected(connectedDevice, cnctDeviceIdx))  // 同じコネクションを２つ張らない
+                    {
+                        if (!connectedDevice.IsMatched)
+                        {
+                            connectedDevice.Match(r, cnctDeviceIdx);
+                            r.Match(connectedDevice);
+                            ret = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
             return ret;
         }
 
-        public bool TryMatching(PeripheralConnectedDevice device)
+        // アビリティを加味してPeripheralDeviceとPeripheralConnectedDeviceのマッチングをとる
+        public bool TryMatching(PeripheralConnectedDevice connectedDevice, int regDeviceIdx, int cnctDeviceIdx)
+        {
+            bool ret = false;
+
+            if (regDeviceIdx >= 0 && regDeviceIdx < m_registeredDevices.Count)
+            {
+                PeripheralDevice registeredDevice = m_registeredDevices[regDeviceIdx];
+                if (!registeredDevice.IsAlreadyConnected(connectedDevice, cnctDeviceIdx))  // 同じコネクションを２つ張らない
+                {
+                    if (!connectedDevice.IsMatched && registeredDevice.IsAcceptable(connectedDevice))
+                    {
+                        connectedDevice.Match(registeredDevice, cnctDeviceIdx);
+                        registeredDevice.Match(connectedDevice);
+                        ret = true;
+                    }
+                }
+            }
+            else
+            {
+                foreach (PeripheralDevice r in m_registeredDevices)
+                {
+                    if (!r.IsAlreadyConnected(connectedDevice, cnctDeviceIdx))  // 同じコネクションを２つ張らない
+                    {
+                        if (!connectedDevice.IsMatched && r.IsAcceptable(connectedDevice))
+                        {
+                            connectedDevice.Match(r, cnctDeviceIdx);
+                            r.Match(connectedDevice);
+                            ret = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return ret;
+        }
+
+        public bool TryMatching(PeripheralConnectedDevice device, int cnctDeviceIdx)
         {
             bool ret = false;
             for(int i = 0; i < m_registeredDevices.Count; i++)
             {
-                if (TryMatching(device, i))
+                if (TryMatching(device, i, cnctDeviceIdx))
                 {
                     ret = true;
                     break;
@@ -273,22 +377,25 @@ namespace Gogyo.Network
             }
         }
 
-        private void SendRequest(string address, int port, int deviceIdx)
+        private void SendRequest(string address, int port, int deviceIdx, int selfDeviceIdx)
         {
-            PeripheralProtocolEx p = new PeripheralProtocolEx();
+            PeripheralRequestProtocol p = new PeripheralRequestProtocol();
             p.pcmd = "request";
             p.devidx = deviceIdx;
+            p.selfdevidx = selfDeviceIdx;
             m_udp.Send(JsonUtility.ToJson(p), address, port);
         }
 
         private int GetDeviceIdxFromJson(string data)
         {
             PeripheralProtocolEx p = new PeripheralProtocolEx();
-            p.devidx = -1;
-            p = JsonUtility.FromJson<PeripheralProtocolEx>(data);
-            if(null != p)
-            {
-                return p.devidx;
+            if (data.Contains("\"devidx\""))
+            {   // HololensのJsonUtilityが、メンバーがいないときに0を代入してしまう問題への対策.
+                p = JsonUtility.FromJson<PeripheralProtocolEx>(data);
+                if (null != p)
+                {
+                    return p.devidx;
+                }
             }
             return -1;
         }
@@ -314,7 +421,14 @@ namespace Gogyo.Network
         [System.Serializable]
         public class PeripheralProtocolEx : PeripheralProtocol
         {
-            public int devidx;
+            public int devidx = -1;
+        }
+
+        //  Class for JSON encode/decode.
+        [System.Serializable]
+        public class PeripheralRequestProtocol : PeripheralProtocolEx
+        {
+            public int selfdevidx;
         }
 
         //  Class for JSON encode/decode.
